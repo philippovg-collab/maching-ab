@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Way4 ↔ VISA Сверка Транзакций</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="bg"></div>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">AltynBank Прототип</p>
+          <h1>Way4 ↔ VISA Сверка Транзакций</h1>
+        </div>
+        <div class="top-controls">
+          <label>
+            Пользователь
+            <select id="userSelect">
+              <option value="admin">admin</option>
+              <option value="operator1">operator1</option>
+              <option value="supervisor">supervisor</option>
+              <option value="auditor">auditor</option>
+              <option value="finance">finance</option>
+            </select>
+          </label>
+          <label>
+            Бизнес-дата
+            <input id="businessDate" type="date" value="2026-02-22" />
+          </label>
+          <button id="refreshBtn" class="btn primary">Обновить</button>
+          <button id="runBtn" class="btn">Запустить матчинг</button>
+          <button id="exportUnmatchedBtn" class="btn">Скачать несопоставленные CSV</button>
+          <div id="runBtnHint" class="top-hint">Загрузите файлы Way4 и VISA для запуска матчинга</div>
+        </div>
+      </header>
+
+      <nav class="tabs">
+        <button id="tabDashboard" class="tab-btn active">Дашборд</button>
+        <button id="tabIngestion" class="tab-btn">Загрузка</button>
+        <button id="tabLite" class="tab-btn">Загрузка Lite</button>
+        <button id="tabResults" class="tab-btn">Результаты</button>
+      </nav>
+
+      <section id="viewDashboard">
+        <section id="firstRunCta" class="panel first-run-cta hidden">
+          <div class="panel-head"><h2>Начните сверку за 1 минуту</h2></div>
+          <div class="first-run-inner">
+            <p>Загрузите 1 файл Way4 и 1+ файлов VISA, затем нажмите "Сверить и показать разницу".</p>
+            <div class="first-run-actions">
+              <button id="startOnboardingBtn" class="btn primary">Загрузить файлы и начать сверку</button>
+              <button id="openLiteGuideBtn" class="btn">Открыть Загрузка Lite</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><h2>Быстрый путь</h2></div>
+          <div class="quick-path">
+            <div class="quick-step">
+              <span>1</span>
+              <div>
+                <strong>Загрузите файлы</strong>
+                <small>1 файл Way4 и 1+ файлов VISA</small>
+              </div>
+            </div>
+            <div class="quick-step">
+              <span>2</span>
+              <div>
+                <strong>Нажмите "Сверить и показать разницу"</strong>
+                <small>Система сама распарсит и запустит матчинг</small>
+              </div>
+            </div>
+            <div class="quick-step">
+              <span>3</span>
+              <div>
+                <strong>Откройте результаты</strong>
+                <small>Фильтруйте несопоставленные и скачайте отчеты</small>
+              </div>
+            </div>
+            <button id="goLiteBtn" class="btn primary">Перейти к загрузке Lite</button>
+          </div>
+        </section>
+
+        <section class="panel secondary-panel">
+          <div class="panel-head"><h2>Последняя сверка</h2></div>
+          <div class="last-run">
+            <div class="last-run-main">
+              <span id="lastRunBadge" class="badge idle">Нет запуска</span>
+              <strong id="lastRunTitle">Сверка не запускалась для выбранной даты</strong>
+              <small>Run ID: <b id="lastRunId">-</b></small>
+            </div>
+            <div class="last-run-grid">
+              <div class="source-item">
+                <p>Бизнес-дата</p>
+                <strong id="lastRunBusinessDate">-</strong>
+              </div>
+              <div class="source-item">
+                <p>Matched</p>
+                <strong id="lastRunMatched">-</strong>
+              </div>
+              <div class="source-item">
+                <p>Unmatched</p>
+                <strong id="lastRunUnmatched">-</strong>
+              </div>
+              <div class="source-item">
+                <p>Partial</p>
+                <strong id="lastRunPartial">-</strong>
+              </div>
+            </div>
+            <div class="lite-actions">
+              <button id="openLastResultsBtn" class="btn">Открыть результаты</button>
+              <button id="downloadLastReportBtn" class="btn">Скачать отчет</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel secondary-panel">
+          <div class="panel-head"><h2>Статус матчинга</h2></div>
+          <div class="match-status">
+            <div class="match-status-main">
+              <span id="matchStatusBadge" class="badge idle">Нет запуска</span>
+              <strong id="matchStatusText">Запусков за выбранную дату пока нет</strong>
+            </div>
+            <div class="match-status-meta">
+              <span>Run ID: <b id="matchStatusRunId">-</b></span>
+              <span>Старт: <b id="matchStatusStarted">-</b></span>
+              <span>Финиш: <b id="matchStatusFinished">-</b></span>
+              <span>Сопоставлено: <b id="matchStatusMatches">-</b></span>
+              <span>Исключения: <b id="matchStatusExceptions">-</b></span>
+            </div>
+            <div class="progress-indeterminate hidden" id="matchProgress">
+              <span></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel secondary-panel">
+          <div class="panel-head"><h2>Контроль загрузки источников</h2></div>
+          <div class="source-balance">
+            <div class="source-item">
+              <p>Way4 записей</p>
+              <strong id="srcWay4Records">-</strong>
+              <small>Файлов: <span id="srcWay4Files">-</span></small>
+            </div>
+            <div class="source-item">
+              <p>VISA записей</p>
+              <strong id="srcVisaRecords">-</strong>
+              <small>Файлов: <span id="srcVisaFiles">-</span></small>
+            </div>
+            <div class="source-item">
+              <p>Соотношение Way4/VISA</p>
+              <strong id="srcRatio">-</strong>
+              <small id="srcReadyLabel">-</small>
+            </div>
+          </div>
+          <div id="srcWarnings" class="warnings hidden"></div>
+        </section>
+
+        <section class="kpi-grid secondary-panel" id="kpiGrid">
+          <article class="kpi-card"><p>Доля матчинга</p><strong id="kpiMatchRate">-</strong></article>
+          <article class="kpi-card"><p>Сопоставлено</p><strong id="kpiMatched">-</strong></article>
+          <article class="kpi-card"><p>Несопоставлено</p><strong id="kpiUnmatched">-</strong></article>
+          <article class="kpi-card"><p>Частично</p><strong id="kpiPartial">-</strong></article>
+          <article class="kpi-card"><p>Расхождение</p><strong id="kpiVariance">-</strong></article>
+        </section>
+
+        <section class="layout secondary-panel">
+          <details class="panel advanced-panel">
+            <summary class="advanced-summary">Advanced: Монитор запусков</summary>
+            <div class="panel-head">
+              <h2>Монитор запусков</h2>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID запуска</th>
+                    <th>Дата</th>
+                    <th>Статус</th>
+                    <th>Набор правил</th>
+                    <th>Кем</th>
+                  </tr>
+                </thead>
+                <tbody id="runsBody"></tbody>
+              </table>
+            </div>
+          </details>
+
+          <details class="panel advanced-panel">
+            <summary class="advanced-summary">Advanced: Очередь исключений</summary>
+            <div class="panel-head split">
+              <h2>Очередь исключений</h2>
+              <label>
+                Статус
+                <select id="statusFilter">
+                  <option value="">Все</option>
+                  <option value="NEW">NEW</option>
+                  <option value="TRIAGED">TRIAGED</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                  <option value="CLOSED">CLOSED</option>
+                </select>
+              </label>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID кейса</th>
+                    <th>Категория</th>
+                    <th>Статус</th>
+                    <th>Ответственный</th>
+                    <th>Критичность</th>
+                  </tr>
+                </thead>
+                <tbody id="exceptionsBody"></tbody>
+              </table>
+            </div>
+          </details>
+        </section>
+
+        <section class="panel detail-panel secondary-panel">
+          <div class="panel-head">
+            <h2>Детализация исключения</h2>
+          </div>
+          <div id="emptyDetail" class="muted">Выберите кейс из очереди исключений.</div>
+          <div id="detailContent" class="detail-grid hidden">
+            <div>
+              <h3>Кейс</h3>
+              <pre id="caseData"></pre>
+            </div>
+            <div>
+              <h3>Транзакция</h3>
+              <pre id="txnData"></pre>
+            </div>
+            <div>
+              <h3>Действия</h3>
+              <div class="actions">
+                <label>
+                  Назначить на
+                  <select id="assigneeSelect"></select>
+                </label>
+                <button id="assignBtn" class="btn">Назначить</button>
+                <button data-status="TRIAGED" class="btn statusBtn">Статус TRIAGED</button>
+                <button data-status="IN_PROGRESS" class="btn statusBtn">Статус IN_PROGRESS</button>
+                <input id="commentInput" type="text" placeholder="Комментарий" />
+                <button id="commentBtn" class="btn">Добавить комментарий</button>
+                <input id="resolutionInput" type="text" placeholder="Код решения (например, POSTED_LATE)" />
+                <button id="closeBtn" class="btn danger">Закрыть кейс</button>
+              </div>
+            </div>
+            <div>
+              <h3>История</h3>
+              <pre id="actionsData"></pre>
+            </div>
+            <div>
+              <h3>Причины несопоставления</h3>
+              <pre id="diagnosticsData"></pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel secondary-panel">
+          <div class="panel-head"><h2>Аудит (последние события)</h2></div>
+          <div class="table-wrap audit-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Время</th>
+                  <th>Пользователь</th>
+                  <th>Действие</th>
+                  <th>Результат</th>
+                  <th>Описание</th>
+                  <th>Подробнее</th>
+                </tr>
+              </thead>
+              <tbody id="auditBody"></tbody>
+            </table>
+          </div>
+          <div id="auditEmpty" class="muted hidden">Нет событий аудита.</div>
+          <div class="audit-detail">
+            <h3>Детали события</h3>
+            <pre id="auditDetailData">Выберите строку в таблице аудита.</pre>
+          </div>
+        </section>
+      </section>
+
+      <section id="viewIngestion" class="hidden">
+        <section class="panel ingestion-panel">
+          <div class="panel-head">
+            <h2>Загрузка XLSX</h2>
+          </div>
+          <div id="dropZone" class="drop-zone">
+            <p>Перетащите сюда файлы .xlsx</p>
+            <small>или выберите их ниже</small>
+          </div>
+          <div class="ingestion-grid">
+            <label>
+              Профиль источника
+              <select id="xlsxProfile">
+                <option value="">АВТООПРЕДЕЛЕНИЕ (рекомендуется)</option>
+                <option value="WAY4_1552_V1">WAY4_1552_V1 (Копия 1552.xlsx)</option>
+                <option value="VISA_MSPK_V1">VISA_MSPK_V1 (Копия Виза МСПК.xlsx)</option>
+              </select>
+            </label>
+            <label>
+              Файлы XLSX
+              <input id="xlsxFiles" type="file" accept=".xlsx" multiple />
+            </label>
+            <button id="xlsxUploadBtn" class="btn primary">Загрузить файлы</button>
+            <button id="xlsxUploadRunBtn" class="btn">Загрузить и запустить матчинг</button>
+          </div>
+          <h3>Прогресс загрузки</h3>
+          <div id="uploadProgress" class="upload-progress"></div>
+          <div class="muted">
+            Поддерживает пакетную загрузку нескольких Excel. Профиль можно определить автоматически.
+          </div>
+          <h3>Результат загрузки</h3>
+          <pre id="xlsxResult"></pre>
+        </section>
+      </section>
+
+      <section id="viewLite" class="hidden">
+        <section class="panel ingestion-panel">
+          <div class="panel-head"><h2>Быстрая сверка</h2></div>
+          <div class="lite-grid">
+            <div class="lite-card">
+              <h3>Way4 файл</h3>
+              <div id="dropWay4" class="drop-zone small">
+                <p>Перетащите Way4 .xlsx</p>
+                <small>или выберите файл</small>
+              </div>
+              <input id="liteWay4File" type="file" accept=".xlsx" />
+              <div id="liteWay4Name" class="muted">Файл не выбран</div>
+            </div>
+            <div class="lite-card">
+              <h3>VISA файл(ы)</h3>
+              <div id="dropVisa" class="drop-zone small">
+                <p>Перетащите VISA .xlsx</p>
+                <small>можно несколько файлов</small>
+              </div>
+              <input id="liteVisaFiles" type="file" accept=".xlsx" multiple />
+              <div id="liteVisaNames" class="muted">Файлы не выбраны</div>
+            </div>
+          </div>
+          <div class="lite-actions">
+            <button id="quickCompareBtn" class="btn primary" disabled>Сверить и показать разницу</button>
+          </div>
+          <h3>Прогресс быстрой сверки</h3>
+          <div id="quickProgress" class="upload-progress"></div>
+          <h3>Ошибки валидации</h3>
+          <pre id="quickErrors">Нет ошибок</pre>
+        </section>
+      </section>
+
+      <section id="viewResults" class="hidden">
+        <section class="panel">
+          <div class="panel-head"><h2>Результаты сверки</h2></div>
+          <div class="source-balance">
+            <div class="source-item">
+              <p>Run ID</p>
+              <strong id="resRunId">-</strong>
+              <small>Дата: <span id="resDate">-</span></small>
+            </div>
+            <div class="source-item">
+              <p>Сопоставлено</p>
+              <strong id="resMatched">-</strong>
+              <small>Сопоставленные</small>
+            </div>
+            <div class="source-item">
+              <p>Нет в VISA</p>
+              <strong id="resUnmatchedWay4">-</strong>
+              <small>Транзакции Way4 без пары</small>
+            </div>
+            <div class="source-item">
+              <p>Нет в Way4</p>
+              <strong id="resUnmatchedVisa">-</strong>
+              <small>Транзакции VISA без пары</small>
+            </div>
+            <div class="source-item">
+              <p>Частично</p>
+              <strong id="resPartial">-</strong>
+              <small>Частично сопоставлено</small>
+            </div>
+            <div class="source-item">
+              <p>Дубликаты</p>
+              <strong id="resDuplicates">-</strong>
+              <small>Дубликаты</small>
+            </div>
+            <div class="source-item">
+              <p>Дельта суммы</p>
+              <strong id="resAmountDelta">-</strong>
+              <small>Суммарная дельта</small>
+            </div>
+          </div>
+          <div class="lite-actions">
+            <button id="resExportReportBtn" class="btn primary">Скачать отчет XLSX</button>
+            <button id="resExportWay4Btn" class="btn">Unmatched Way4 CSV</button>
+            <button id="resExportVisaBtn" class="btn">Unmatched VISA CSV</button>
+            <button id="resExportMismatchBtn" class="btn">Mismatches/Partial XLSX</button>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Фильтры результатов</h2></div>
+          <div class="ingestion-grid">
+            <label>
+              Статус
+              <select id="resStatusFilter">
+                <option value="">Все</option>
+                <option value="MATCHED">Сопоставлено</option>
+                <option value="MISSING_IN_WAY4">Нет в Way4</option>
+                <option value="MISSING_IN_VISA">Нет в VISA</option>
+                <option value="PARTIAL">Частично</option>
+                <option value="DUPLICATE">Дубликат</option>
+                <option value="MISMATCH">Расхождение</option>
+              </select>
+            </label>
+            <label>
+              Поиск (RRN/ARN/PAN)
+              <input id="resSearch" type="text" />
+            </label>
+            <label>
+              Сумма от
+              <input id="resAmountMin" type="number" step="0.01" />
+            </label>
+            <label>
+              Сумма до
+              <input id="resAmountMax" type="number" step="0.01" />
+            </label>
+            <label>
+              Валюта
+              <input id="resCurrency" type="text" placeholder="KZT" />
+            </label>
+            <label>
+              Сортировка
+              <select id="resSortBy">
+                <option value="txn_time">Время транзакции</option>
+                <option value="delta">Дельта суммы</option>
+                <option value="match_score">Скор матчинга</option>
+              </select>
+            </label>
+            <label>
+              Порядок
+              <select id="resSortDir">
+                <option value="desc">По убыванию</option>
+                <option value="asc">По возрастанию</option>
+              </select>
+            </label>
+            <button id="resApplyFilters" class="btn primary">Применить</button>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Единая таблица результатов</h2></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Статус</th>
+                  <th>RRN</th>
+                  <th>ARN</th>
+                  <th>Время транзакции</th>
+                  <th>Сумма Way4</th>
+                  <th>Сумма VISA</th>
+                  <th>Дельта</th>
+                  <th>Валюта</th>
+                  <th>Скор матчинга</th>
+                  <th>Причина/Правило</th>
+                </tr>
+              </thead>
+              <tbody id="resRowsBody"></tbody>
+            </table>
+          </div>
+          <div class="panel-head split">
+            <div id="resPageInfo" class="muted">Страница 1</div>
+            <div>
+              <button id="resPrevPage" class="btn">Назад</button>
+              <button id="resNextPage" class="btn">Вперед</button>
+            </div>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Детализация строки результата (Diff Viewer)</h2></div>
+          <div id="resDetailEmpty" class="muted">Кликните строку в таблице результатов.</div>
+          <div id="resDetailWrap" class="detail-grid hidden">
+            <div>
+              <h3>Way4 (left)</h3>
+              <pre id="resLeftRecord"></pre>
+            </div>
+            <div>
+              <h3>VISA (right)</h3>
+              <pre id="resRightRecord"></pre>
+            </div>
+            <div>
+              <h3>Explain</h3>
+              <pre id="resExplain"></pre>
+            </div>
+            <div>
+              <h3>Differences</h3>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Field</th>
+                      <th>Left</th>
+                      <th>Right</th>
+                      <th>Severity</th>
+                    </tr>
+                  </thead>
+                  <tbody id="resDiffBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Кейсы-исключения по текущему run (кратко)</h2></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID кейса</th>
+                  <th>Категория</th>
+                  <th>Статус</th>
+                  <th>Критичность</th>
+                </tr>
+              </thead>
+              <tbody id="resExceptionsBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <p id="toast" class="toast hidden"></p>
+    </main>
+    <script src="/assets/app.js"></script>
+  </body>
+</html>
