@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from src.db import Database
 from src.demo_data import seed_demo_data
@@ -96,6 +97,119 @@ class AppGuardsTest(unittest.TestCase):
     def test_validate_xlsx_requires_payload(self):
         with self.assertRaises(ValidationError):
             self.service.validate_xlsx("admin", {"file_name": "sample.xlsx"})
+
+    def test_results_filters_validation(self):
+        business_date = "2026-02-26"
+        run = seed_demo_data(self.service, business_date=business_date)
+        with self.assertRaises(ValidationError):
+            self.service.get_run_results("admin", run["run_id"], {"page": "abc"})
+        with self.assertRaises(ValidationError):
+            self.service.get_run_results("admin", run["run_id"], {"amount_min": "bad"})
+        with self.assertRaises(ValidationError):
+            self.service.get_run_results("admin", run["run_id"], {"amount_min": "100", "amount_max": "1"})
+
+    def test_exception_actions_validation(self):
+        business_date = "2026-02-27"
+        seed_demo_data(self.service, business_date=business_date)
+        cases = self.service.list_exceptions("admin", {"business_date": business_date})
+        case_id = cases["items"][0]["case_id"]
+
+        with self.assertRaises(ValidationError):
+            self.service.exception_action(
+                "admin",
+                "127.0.0.1",
+                case_id,
+                {"action_type": "status_change", "status": "INVALID"},
+            )
+        with self.assertRaises(ValidationError):
+            self.service.exception_action(
+                "admin",
+                "127.0.0.1",
+                case_id,
+                {"action_type": "assign", "owner_user_id": "ghost"},
+            )
+        with self.assertRaises(ValidationError):
+            self.service.exception_action(
+                "admin",
+                "127.0.0.1",
+                case_id,
+                {"action_type": "comment", "comment": "   "},
+            )
+
+    def test_run_marked_failed_when_matching_crashes(self):
+        business_date = "2026-02-25"
+        way4_record = {
+            "rrn": "W001",
+            "arn": "A-W001",
+            "pan_masked": "400012******0001",
+            "amount": 125.0,
+            "currency": "KZT",
+            "txn_time": f"{business_date}T10:00:00+06:00",
+            "op_type": "PURCHASE",
+            "merchant_id": "M1",
+            "channel_id": "POS",
+            "status_norm": "BOOKED",
+        }
+        visa_record = {
+            "rrn": "V001",
+            "arn": "A-V001",
+            "pan_masked": "400012******0002",
+            "amount": 125.0,
+            "currency": "KZT",
+            "txn_time": f"{business_date}T10:01:00+06:00",
+            "op_type": "PURCHASE",
+            "merchant_id": "M1",
+            "channel_id": "POS",
+            "status_norm": "BOOKED",
+        }
+        self.service.ingest_file(
+            "admin",
+            "127.0.0.1",
+            {
+                "source": "WAY4_EXPORT",
+                "business_date": business_date,
+                "file_name": "way4.json",
+                "checksum_sha256": "wm1",
+                "parser_profile": "WAY4_v1",
+                "records": [way4_record],
+            },
+        )
+        self.service.ingest_file(
+            "admin",
+            "127.0.0.1",
+            {
+                "source": "VISA_EXPORT",
+                "business_date": business_date,
+                "file_name": "visa.json",
+                "checksum_sha256": "vm1",
+                "parser_profile": "VISA_v1",
+                "records": [visa_record],
+            },
+        )
+
+        with mock.patch("src.services.match_transactions", side_effect=RuntimeError("forced_crash")):
+            with self.assertRaises(RuntimeError):
+                self.service.run_matching("admin", "127.0.0.1", {"business_date": business_date, "scope_filter": "ALL"})
+
+        with self.db.connect() as conn:
+            run = conn.execute(
+                "SELECT status, finished_at FROM match_runs WHERE business_date=? ORDER BY started_at DESC LIMIT 1",
+                (business_date,),
+            ).fetchone()
+            self.assertIsNotNone(run)
+            self.assertEqual(run["status"], "FAILED")
+            self.assertTrue(run["finished_at"])
+            audit = conn.execute(
+                """
+                SELECT result, details FROM audit_events
+                WHERE action='MATCH_RUN_EXECUTE'
+                ORDER BY event_at DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            self.assertIsNotNone(audit)
+            self.assertEqual(audit["result"], "FAILURE")
+            self.assertIn("forced_crash", audit["details"])
 
 
 class UiOnboardingSmokeTest(unittest.TestCase):

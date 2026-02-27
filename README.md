@@ -23,6 +23,8 @@ Run container:
 ```bash
 docker run --name way4-visa-recon \
   -p 8080:8080 \
+  -e APP_ENV=production \
+  -e PAN_HASH_SECRET='replace-with-strong-random-secret' \
   -v "$(pwd)/data:/app/data" \
   -d way4-visa-recon:latest
 ```
@@ -43,6 +45,7 @@ docker rm way4-visa-recon
 ## Run
 ```bash
 cd /Users/gleb-imac/Documents/AltynBank
+export PAN_HASH_SECRET='dev-local-secret'
 python3 -m src.demo_data
 python3 -m src.server
 ```

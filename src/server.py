@@ -4,6 +4,7 @@ import json
 import mimetypes
 import os
 import re
+import traceback
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -135,7 +136,11 @@ class ApiHandler(BaseHTTPRequestHandler):
                 return self._json_response(HTTPStatus.OK, res)
 
             if method == "GET" and path == "/api/v1/match/runs":
-                res = self.service.list_runs(actor, int(query.get("limit", "50")), business_date=query.get("business_date"))
+                try:
+                    limit = int(query.get("limit", "50"))
+                except (TypeError, ValueError):
+                    raise ValidationError("limit must be an integer")
+                res = self.service.list_runs(actor, limit, business_date=query.get("business_date"))
                 return self._json_response(HTTPStatus.OK, res)
 
             m = re.fullmatch(r"/api/v1/results/run/([a-f0-9\-]+)", path)
@@ -267,8 +272,9 @@ class ApiHandler(BaseHTTPRequestHandler):
             return self._json_response(HTTPStatus.NOT_FOUND, {"error": str(e)})
         except json.JSONDecodeError:
             return self._json_response(HTTPStatus.BAD_REQUEST, {"error": "Invalid JSON body"})
-        except Exception as e:  # pragma: no cover
-            return self._json_response(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": str(e)})
+        except Exception:  # pragma: no cover
+            traceback.print_exc()
+            return self._json_response(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
 
     def log_message(self, format: str, *args):
         return

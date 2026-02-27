@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -11,4 +12,8 @@ DEFAULT_RULESET = {
     "score_threshold": 0.75,
 }
 
-PAN_HASH_SECRET = "change-me-in-production"
+APP_ENV = (os.getenv("APP_ENV") or "dev").lower()
+PAN_HASH_SECRET = os.getenv("PAN_HASH_SECRET", "change-me-in-production")
+
+if APP_ENV in {"prod", "production"} and PAN_HASH_SECRET == "change-me-in-production":
+    raise RuntimeError("PAN_HASH_SECRET must be set in production")

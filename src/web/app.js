@@ -150,6 +150,7 @@ const statusRu = {
   CLOSED: "Закрыт",
   RUNNING: "Выполняется",
   FINISHED: "Завершен",
+  FAILED: "Ошибка",
 };
 const categoryRu = {
   MISSING_IN_VISA: "Нет в VISA",
@@ -158,6 +159,19 @@ const categoryRu = {
   DATE_MISMATCH: "Расхождение даты",
   OPTYPE_MISMATCH: "Расхождение типа операции",
   DUPLICATE: "Дубликат",
+  STATUS_MISMATCH: "Расхождение статуса",
+};
+const reasonRu = {
+  EXACT_RRN_AMOUNT_CURR_DATE: "Точное совпадение RRN/сумма/валюта/дата",
+  ARN_MATCH_WITH_TOLERANCE: "Совпадение по ARN в рамках допуска",
+  FUZZY_SCORE: "Нечеткое сопоставление по скору",
+  ONE_TO_MANY_SUM_MATCH: "Частичное сопоставление one-to-many по сумме",
+  MISSING_IN_WAY4: "Нет записи в Way4",
+  MISSING_IN_VISA: "Нет записи в VISA",
+  DUPLICATE: "Дубликат",
+  AMOUNT_MISMATCH: "Расхождение суммы",
+  DATE_MISMATCH: "Расхождение даты",
+  OPTYPE_MISMATCH: "Расхождение типа операции",
   STATUS_MISMATCH: "Расхождение статуса",
 };
 const unifiedStatusRu = {
@@ -184,6 +198,7 @@ const ruCategory = (v) => categoryRu[v] || v || "-";
 const ruSeverity = (v) => severityRu[v] || v || "-";
 const ruUnifiedStatus = (v) => unifiedStatusRu[v] || v || "-";
 const ruAuditAction = (v) => auditActionRu[v] || v || "-";
+const ruReason = (v) => reasonRu[v] || v || "-";
 const ruResult = (v) => (v === "SUCCESS" ? "Успешно" : v === "DUPLICATE" ? "Дубликат" : v || "-");
 
 function showToast(text, isError = false) {
@@ -754,7 +769,7 @@ function renderResultRows(items) {
       <td>${it.delta ?? "-"}</td>
       <td>${it.currency || "-"}</td>
       <td>${it.match_score ?? "-"}</td>
-      <td>${it.rule_reason || "-"}</td>
+      <td>${ruReason(it.rule_reason)}</td>
     `;
     tr.addEventListener("click", async () => {
       await loadResultDetails(it.row_id);
@@ -771,7 +786,7 @@ function renderResultDetails(d) {
   el.resLeftRecord.textContent = pretty(d.left_record || {});
   el.resRightRecord.textContent = pretty(d.right_record || {});
   el.resExplain.textContent = pretty({
-    reason_code: d.reason_code,
+    reason_code: ruReason(d.reason_code),
     score: d.score,
     explain_json: d.explain_json || {},
   });
@@ -785,7 +800,7 @@ function renderResultDetails(d) {
       <td>${diff.field}</td>
       <td>${diff.left ?? "-"}</td>
       <td>${diff.right ?? "-"}</td>
-      <td>${sev}</td>
+      <td>${ruSeverity(sev)}</td>
     `;
     el.resDiffBody.appendChild(tr);
   }

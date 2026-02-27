@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS exception_cases (
 );
 
 CREATE INDEX IF NOT EXISTS ix_exception_date_status ON exception_cases(business_date, status);
+CREATE INDEX IF NOT EXISTS ix_exception_run ON exception_cases(run_id);
 
 CREATE TABLE IF NOT EXISTS exception_actions (
   action_id TEXT PRIMARY KEY,

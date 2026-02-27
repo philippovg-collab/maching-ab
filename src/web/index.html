@@ -97,15 +97,15 @@
                 <strong id="lastRunBusinessDate">-</strong>
               </div>
               <div class="source-item">
-                <p>Matched</p>
+                <p>Сопоставлено</p>
                 <strong id="lastRunMatched">-</strong>
               </div>
               <div class="source-item">
-                <p>Unmatched</p>
+                <p>Несопоставлено</p>
                 <strong id="lastRunUnmatched">-</strong>
               </div>
               <div class="source-item">
-                <p>Partial</p>
+                <p>Частично</p>
                 <strong id="lastRunPartial">-</strong>
               </div>
             </div>
@@ -396,9 +396,9 @@
           </div>
           <div class="lite-actions">
             <button id="resExportReportBtn" class="btn primary">Скачать отчет XLSX</button>
-            <button id="resExportWay4Btn" class="btn">Unmatched Way4 CSV</button>
-            <button id="resExportVisaBtn" class="btn">Unmatched VISA CSV</button>
-            <button id="resExportMismatchBtn" class="btn">Mismatches/Partial XLSX</button>
+            <button id="resExportWay4Btn" class="btn">Несопоставленные Way4 CSV</button>
+            <button id="resExportVisaBtn" class="btn">Несопоставленные VISA CSV</button>
+            <button id="resExportMismatchBtn" class="btn">Расхождения/Частичные XLSX</button>
           </div>
         </section>
         <section class="panel">
@@ -484,27 +484,27 @@
           <div id="resDetailEmpty" class="muted">Кликните строку в таблице результатов.</div>
           <div id="resDetailWrap" class="detail-grid hidden">
             <div>
-              <h3>Way4 (left)</h3>
+              <h3>Way4 (слева)</h3>
               <pre id="resLeftRecord"></pre>
             </div>
             <div>
-              <h3>VISA (right)</h3>
+              <h3>VISA (справа)</h3>
               <pre id="resRightRecord"></pre>
             </div>
             <div>
-              <h3>Explain</h3>
+              <h3>Объяснение</h3>
               <pre id="resExplain"></pre>
             </div>
             <div>
-              <h3>Differences</h3>
+              <h3>Различия</h3>
               <div class="table-wrap">
                 <table>
                   <thead>
                     <tr>
-                      <th>Field</th>
-                      <th>Left</th>
-                      <th>Right</th>
-                      <th>Severity</th>
+                      <th>Поле</th>
+                      <th>Way4</th>
+                      <th>VISA</th>
+                      <th>Критичность</th>
                     </tr>
                   </thead>
                   <tbody id="resDiffBody"></tbody>

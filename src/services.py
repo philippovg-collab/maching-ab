@@ -515,74 +515,94 @@ class AppService:
             )
             # Persist RUNNING status early so UI polling can display live progress.
             conn.commit()
+            try:
+                matches, exceptions = match_transactions(way4, visa, rules)
+                for m in matches:
+                    conn.execute(
+                        """
+                        INSERT INTO match_results(match_id, run_id, left_txn_id, right_txn_id, match_type, score, reason_code, explain_json)
+                        VALUES(?,?,?,?,?,?,?,?)
+                        """,
+                        (
+                            str(uuid.uuid4()),
+                            run_id,
+                            m["left_txn_id"],
+                            m["right_txn_id"],
+                            m["match_type"],
+                            float(m["score"]),
+                            m["reason_code"],
+                            json.dumps(m["explain"], ensure_ascii=False),
+                        ),
+                    )
 
-            matches, exceptions = match_transactions(way4, visa, rules)
-            for m in matches:
+                for e in exceptions:
+                    conn.execute(
+                        """
+                        INSERT INTO exception_cases(case_id, run_id, business_date, category, severity, status, primary_txn_id,
+                        owner_user_id, aging_days, resolution_code, created_at, closed_at)
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+                        """,
+                        (
+                            str(uuid.uuid4()),
+                            run_id,
+                            business_date,
+                            e["category"],
+                            e["severity"],
+                            "NEW",
+                            e["primary_txn_id"],
+                            None,
+                            0,
+                            None,
+                            now_iso(),
+                            None,
+                        ),
+                    )
+
+                finished = now_iso()
                 conn.execute(
-                    """
-                    INSERT INTO match_results(match_id, run_id, left_txn_id, right_txn_id, match_type, score, reason_code, explain_json)
-                    VALUES(?,?,?,?,?,?,?,?)
-                    """,
-                    (
-                        str(uuid.uuid4()),
-                        run_id,
-                        m["left_txn_id"],
-                        m["right_txn_id"],
-                        m["match_type"],
-                        float(m["score"]),
-                        m["reason_code"],
-                        json.dumps(m["explain"], ensure_ascii=False),
-                    ),
+                    "UPDATE match_runs SET finished_at=?, status='FINISHED' WHERE run_id=?",
+                    (finished, run_id),
+                )
+                self._audit(
+                    conn,
+                    actor,
+                    source_ip,
+                    "match_run",
+                    run_id,
+                    "MATCH_RUN_EXECUTE",
+                    "SUCCESS",
+                    f"matches={len(matches)} exceptions={len(exceptions)}",
                 )
 
-            for e in exceptions:
+                return {
+                    "run_id": run_id,
+                    "business_date": business_date,
+                    "ruleset_version": rules.version,
+                    "matches_created": len(matches),
+                    "exceptions_created": len(exceptions),
+                    "started_at": started,
+                    "finished_at": finished,
+                }
+            except Exception as e:
+                finished = now_iso()
                 conn.execute(
-                    """
-                    INSERT INTO exception_cases(case_id, run_id, business_date, category, severity, status, primary_txn_id,
-                    owner_user_id, aging_days, resolution_code, created_at, closed_at)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-                    """,
-                    (
-                        str(uuid.uuid4()),
-                        run_id,
-                        business_date,
-                        e["category"],
-                        e["severity"],
-                        "NEW",
-                        e["primary_txn_id"],
-                        None,
-                        0,
-                        None,
-                        now_iso(),
-                        None,
-                    ),
+                    "UPDATE match_runs SET finished_at=?, status='FAILED' WHERE run_id=?",
+                    (finished, run_id),
                 )
-
-            finished = now_iso()
-            conn.execute(
-                "UPDATE match_runs SET finished_at=?, status='FINISHED' WHERE run_id=?",
-                (finished, run_id),
-            )
-            self._audit(
-                conn,
-                actor,
-                source_ip,
-                "match_run",
-                run_id,
-                "MATCH_RUN_EXECUTE",
-                "SUCCESS",
-                f"matches={len(matches)} exceptions={len(exceptions)}",
-            )
-
-            return {
-                "run_id": run_id,
-                "business_date": business_date,
-                "ruleset_version": rules.version,
-                "matches_created": len(matches),
-                "exceptions_created": len(exceptions),
-                "started_at": started,
-                "finished_at": finished,
-            }
+                self._audit(
+                    conn,
+                    actor,
+                    source_ip,
+                    "match_run",
+                    run_id,
+                    "MATCH_RUN_EXECUTE",
+                    "FAILURE",
+                    f"{type(e).__name__}: {str(e)[:300]}",
+                )
+                # RUNNING was committed earlier for UI polling, so FAILED state
+                # must also be explicitly committed before re-raising.
+                conn.commit()
+                raise
 
     def latest_run_status(self, actor: str, business_date: str) -> Dict[str, Any]:
         self.check_permission(actor, "match:read")
@@ -683,8 +703,14 @@ class AppService:
         if not run_id:
             raise ValidationError("run_id is required")
 
-        page = max(1, int(filters.get("page", 1)))
-        page_size = max(1, min(int(filters.get("page_size", 50)), 200))
+        try:
+            page = max(1, int(filters.get("page", 1)))
+        except (TypeError, ValueError):
+            raise ValidationError("page must be an integer >= 1")
+        try:
+            page_size = max(1, min(int(filters.get("page_size", 50)), 200))
+        except (TypeError, ValueError):
+            raise ValidationError("page_size must be an integer")
         offset = (page - 1) * page_size
 
         status = (filters.get("status") or "").strip().upper()
@@ -716,11 +742,21 @@ class AppService:
             where.append("u.currency = ?")
             params.append(currency)
         if amount_min not in (None, ""):
+            try:
+                amount_min_value = float(amount_min)
+            except (TypeError, ValueError):
+                raise ValidationError("amount_min must be a number")
             where.append("COALESCE(u.amount_way4, u.amount_visa, 0) >= ?")
-            params.append(float(amount_min))
+            params.append(amount_min_value)
         if amount_max not in (None, ""):
+            try:
+                amount_max_value = float(amount_max)
+            except (TypeError, ValueError):
+                raise ValidationError("amount_max must be a number")
             where.append("COALESCE(u.amount_way4, u.amount_visa, 0) <= ?")
-            params.append(float(amount_max))
+            params.append(amount_max_value)
+            if amount_min not in (None, "") and amount_min_value > amount_max_value:
+                raise ValidationError("amount_min must be <= amount_max")
         where_sql = " AND ".join(where)
 
         base_cte = """
@@ -1600,12 +1636,24 @@ class AppService:
                 owner = payload.get("owner_user_id")
                 if not owner:
                     raise ValidationError("owner_user_id is required for assign")
+                owner_row = conn.execute("SELECT login, status FROM users WHERE login=?", (owner,)).fetchone()
+                if not owner_row or owner_row["status"] != "ACTIVE":
+                    raise ValidationError("owner_user_id not found or inactive")
                 conn.execute("UPDATE exception_cases SET owner_user_id=?, status='TRIAGED' WHERE case_id=?", (owner, case_id))
             elif action_type == "status_change":
                 status = payload.get("status")
                 if not status:
                     raise ValidationError("status is required for status_change")
+                if status not in {"NEW", "TRIAGED", "IN_PROGRESS", "CLOSED"}:
+                    raise ValidationError("Unsupported status value")
                 conn.execute("UPDATE exception_cases SET status=? WHERE case_id=?", (status, case_id))
+            elif action_type == "comment":
+                comment = str(payload.get("comment") or "").strip()
+                if not comment:
+                    raise ValidationError("comment is required for comment action")
+                if len(comment) > 1000:
+                    raise ValidationError("comment is too long (max 1000 chars)")
+                action_payload["comment"] = comment
             elif action_type == "close":
                 resolution = payload.get("resolution_code")
                 if not resolution:
