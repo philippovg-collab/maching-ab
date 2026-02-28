@@ -515,6 +515,7 @@ class AppService:
             )
             # Persist RUNNING status early so UI polling can display live progress.
             conn.commit()
+            conn.execute("SAVEPOINT run_work")
             try:
                 matches, exceptions = match_transactions(way4, visa, rules)
                 for m in matches:
@@ -573,6 +574,7 @@ class AppService:
                     "SUCCESS",
                     f"matches={len(matches)} exceptions={len(exceptions)}",
                 )
+                conn.execute("RELEASE SAVEPOINT run_work")
 
                 return {
                     "run_id": run_id,
@@ -584,6 +586,11 @@ class AppService:
                     "finished_at": finished,
                 }
             except Exception as e:
+                try:
+                    conn.execute("ROLLBACK TO SAVEPOINT run_work")
+                    conn.execute("RELEASE SAVEPOINT run_work")
+                except Exception:
+                    pass
                 finished = now_iso()
                 conn.execute(
                     "UPDATE match_runs SET finished_at=?, status='FAILED' WHERE run_id=?",

@@ -89,7 +89,7 @@
             <div class="last-run-main">
               <span id="lastRunBadge" class="badge idle">Нет запуска</span>
               <strong id="lastRunTitle">Сверка не запускалась для выбранной даты</strong>
-              <small>Run ID: <b id="lastRunId">-</b></small>
+              <small>ID запуска: <b id="lastRunId">-</b></small>
             </div>
             <div class="last-run-grid">
               <div class="source-item">
@@ -124,7 +124,7 @@
               <strong id="matchStatusText">Запусков за выбранную дату пока нет</strong>
             </div>
             <div class="match-status-meta">
-              <span>Run ID: <b id="matchStatusRunId">-</b></span>
+              <span>ID запуска: <b id="matchStatusRunId">-</b></span>
               <span>Старт: <b id="matchStatusStarted">-</b></span>
               <span>Финиш: <b id="matchStatusFinished">-</b></span>
               <span>Сопоставлено: <b id="matchStatusMatches">-</b></span>
@@ -168,7 +168,7 @@
 
         <section class="layout secondary-panel">
           <details class="panel advanced-panel">
-            <summary class="advanced-summary">Advanced: Монитор запусков</summary>
+            <summary class="advanced-summary">Расширенный режим: Монитор запусков</summary>
             <div class="panel-head">
               <h2>Монитор запусков</h2>
             </div>
@@ -189,17 +189,17 @@
           </details>
 
           <details class="panel advanced-panel">
-            <summary class="advanced-summary">Advanced: Очередь исключений</summary>
+            <summary class="advanced-summary">Расширенный режим: Очередь исключений</summary>
             <div class="panel-head split">
               <h2>Очередь исключений</h2>
               <label>
                 Статус
                 <select id="statusFilter">
                   <option value="">Все</option>
-                  <option value="NEW">NEW</option>
-                  <option value="TRIAGED">TRIAGED</option>
-                  <option value="IN_PROGRESS">IN_PROGRESS</option>
-                  <option value="CLOSED">CLOSED</option>
+                  <option value="NEW">Новый</option>
+                  <option value="TRIAGED">Разобран</option>
+                  <option value="IN_PROGRESS">В работе</option>
+                  <option value="CLOSED">Закрыт</option>
                 </select>
               </label>
             </div>
@@ -242,8 +242,8 @@
                   <select id="assigneeSelect"></select>
                 </label>
                 <button id="assignBtn" class="btn">Назначить</button>
-                <button data-status="TRIAGED" class="btn statusBtn">Статус TRIAGED</button>
-                <button data-status="IN_PROGRESS" class="btn statusBtn">Статус IN_PROGRESS</button>
+                <button data-status="TRIAGED" class="btn statusBtn">Статус: Разобран</button>
+                <button data-status="IN_PROGRESS" class="btn statusBtn">Статус: В работе</button>
                 <input id="commentInput" type="text" placeholder="Комментарий" />
                 <button id="commentBtn" class="btn">Добавить комментарий</button>
                 <input id="resolutionInput" type="text" placeholder="Код решения (например, POSTED_LATE)" />
@@ -359,7 +359,7 @@
           <div class="panel-head"><h2>Результаты сверки</h2></div>
           <div class="source-balance">
             <div class="source-item">
-              <p>Run ID</p>
+              <p>ID запуска</p>
               <strong id="resRunId">-</strong>
               <small>Дата: <span id="resDate">-</span></small>
             </div>
@@ -480,7 +480,7 @@
           </div>
         </section>
         <section class="panel">
-          <div class="panel-head"><h2>Детализация строки результата (Diff Viewer)</h2></div>
+          <div class="panel-head"><h2>Детализация строки результата (просмотр различий)</h2></div>
           <div id="resDetailEmpty" class="muted">Кликните строку в таблице результатов.</div>
           <div id="resDetailWrap" class="detail-grid hidden">
             <div>

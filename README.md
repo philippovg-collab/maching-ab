@@ -147,3 +147,10 @@ curl -X POST http://127.0.0.1:8080/api/v1/ingest/xlsx \
 cd /Users/gleb-imac/Documents/AltynBank
 python3 -m unittest discover -s tests -v
 ```
+
+UI e2e smoke (optional, Playwright):
+```bash
+python3 -m pip install playwright
+python3 -m playwright install chromium
+python3 -m unittest tests.test_ui_e2e_playwright -v
+```

@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+import json
 from pathlib import Path
 from unittest import mock
 
@@ -210,6 +211,110 @@ class AppGuardsTest(unittest.TestCase):
             self.assertIsNotNone(audit)
             self.assertEqual(audit["result"], "FAILURE")
             self.assertIn("forced_crash", audit["details"])
+
+    def test_run_failure_rolls_back_partial_results(self):
+        business_date = "2026-02-28"
+        way4_records = [
+            {
+                "rrn": "R001",
+                "arn": "AR001",
+                "pan_masked": "400012******9001",
+                "amount": 10.0,
+                "currency": "KZT",
+                "txn_time": f"{business_date}T09:00:00+06:00",
+                "op_type": "PURCHASE",
+                "merchant_id": "M1",
+                "channel_id": "POS",
+                "status_norm": "BOOKED",
+            },
+            {
+                "rrn": "R002",
+                "arn": "AR002",
+                "pan_masked": "400012******9002",
+                "amount": 20.0,
+                "currency": "KZT",
+                "txn_time": f"{business_date}T09:05:00+06:00",
+                "op_type": "PURCHASE",
+                "merchant_id": "M1",
+                "channel_id": "POS",
+                "status_norm": "BOOKED",
+            },
+        ]
+        visa_records = [
+            {
+                "rrn": "R001",
+                "arn": "AR001",
+                "pan_masked": "400012******8001",
+                "amount": 10.0,
+                "currency": "KZT",
+                "txn_time": f"{business_date}T09:01:00+06:00",
+                "op_type": "CLEARING",
+                "merchant_id": "M1",
+                "channel_id": "POS",
+                "status_norm": "BOOKED",
+            },
+            {
+                "rrn": "R002",
+                "arn": "AR002",
+                "pan_masked": "400012******8002",
+                "amount": 20.0,
+                "currency": "KZT",
+                "txn_time": f"{business_date}T09:06:00+06:00",
+                "op_type": "CLEARING",
+                "merchant_id": "M1",
+                "channel_id": "POS",
+                "status_norm": "BOOKED",
+            },
+        ]
+        self.service.ingest_file(
+            "admin",
+            "127.0.0.1",
+            {
+                "source": "WAY4_EXPORT",
+                "business_date": business_date,
+                "file_name": "way4-roll.json",
+                "checksum_sha256": "roll-way4",
+                "parser_profile": "WAY4_v1",
+                "records": way4_records,
+            },
+        )
+        self.service.ingest_file(
+            "admin",
+            "127.0.0.1",
+            {
+                "source": "VISA_EXPORT",
+                "business_date": business_date,
+                "file_name": "visa-roll.json",
+                "checksum_sha256": "roll-visa",
+                "parser_profile": "VISA_v1",
+                "records": visa_records,
+            },
+        )
+
+        call_counter = {"n": 0}
+        original_dumps = json.dumps
+
+        def flaky_dumps(obj, *args, **kwargs):
+            call_counter["n"] += 1
+            if call_counter["n"] == 2:
+                raise RuntimeError("forced_mid_insert_failure")
+            return original_dumps(obj, *args, **kwargs)
+
+        with mock.patch("src.services.json.dumps", side_effect=flaky_dumps):
+            with self.assertRaises(RuntimeError):
+                self.service.run_matching("admin", "127.0.0.1", {"business_date": business_date, "scope_filter": "ALL"})
+
+        with self.db.connect() as conn:
+            run = conn.execute(
+                "SELECT run_id, status FROM match_runs WHERE business_date=? ORDER BY started_at DESC LIMIT 1",
+                (business_date,),
+            ).fetchone()
+            self.assertIsNotNone(run)
+            self.assertEqual(run["status"], "FAILED")
+            matches = conn.execute("SELECT COUNT(*) AS c FROM match_results WHERE run_id=?", (run["run_id"],)).fetchone()["c"]
+            exceptions = conn.execute("SELECT COUNT(*) AS c FROM exception_cases WHERE run_id=?", (run["run_id"],)).fetchone()["c"]
+            self.assertEqual(matches, 0)
+            self.assertEqual(exceptions, 0)
 
 
 class UiOnboardingSmokeTest(unittest.TestCase):
