@@ -350,14 +350,18 @@ class AppGuardsTest(unittest.TestCase):
             self.assertEqual(exceptions, 0)
 
 
-class UiOnboardingSmokeTest(unittest.TestCase):
-    def test_onboarding_elements_exist(self):
+class UiNavigationSmokeTest(unittest.TestCase):
+    def test_navigation_is_limited_to_ingestion_and_results(self):
         html = Path("src/web/index.html").read_text(encoding="utf-8")
         js = Path("src/web/app.js").read_text(encoding="utf-8")
-        self.assertIn('id="firstRunCta"', html)
-        self.assertIn('id="startOnboardingBtn"', html)
-        self.assertIn("updateDashboardOnboarding", js)
-        self.assertIn("setView(\"lite\")", js)
+        self.assertIn('id="tabIngestion"', html)
+        self.assertIn('id="tabResults"', html)
+        self.assertNotIn('id="tabDashboard"', html)
+        self.assertNotIn('id="tabLite"', html)
+        self.assertNotIn('id="viewLite"', html)
+        self.assertNotIn('id="userSelect"', html)
+        self.assertNotIn('id="xlsxUploadBtn"', html)
+        self.assertIn('const normalized = view === "results" ? "results" : "ingestion";', js)
 
 
 if __name__ == "__main__":

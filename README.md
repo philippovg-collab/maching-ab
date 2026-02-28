@@ -60,17 +60,14 @@ curl http://127.0.0.1:8080/health
 
 ## Browser flow
 1. Open `http://127.0.0.1:8080/`.
-2. Select `User` and `Business date`.
-3. `Dashboard` tab: click `Refresh` to load metrics, runs, exceptions, audit.
-4. `Run matching` executes re-run for selected date.
-5. In `Exceptions Queue`, click a row to open detail and apply actions (`assign`, `status`, `comment`, `close`).
-6. `Ingestion` tab: upload `.xlsx` in one of supported profiles:
+2. Select `Business date`.
+3. `Загрузка` tab: upload `.xlsx` in one of supported profiles:
    - `AUTO_DETECT` (recommended)
    - `WAY4_1552_V1` (e.g. `Копия 1552.xlsx`)
    - `VISA_MSPK_V1` (e.g. `Копия Виза МСПК.xlsx`)
-7. After upload, return to `Dashboard` and click `Run matching`.
-8. For multiple files use one action: `Upload files` or `Upload + Run matching`.
-9. You can drag-and-drop `.xlsx` files onto the Ingestion drop zone; progress is shown per file.
+4. Click `Загрузить и запустить матчинг`.
+5. Open `Результаты` to use filters/status/search, pagination and exports.
+6. You can drag-and-drop `.xlsx` files onto the Ingestion drop zone; progress is shown per file.
 
 Default users via `X-User` header:
 - `admin`
@@ -107,13 +104,9 @@ Default users via `X-User` header:
 - `GET /api/v1/monitor/source-balance?business_date=YYYY-MM-DD`
 - `GET /api/v1/export/unmatched.csv?business_date=YYYY-MM-DD`
 
-## Quick Compare (Lite)
-- Open tab `Загрузка Lite`.
-- Upload one `Way4 файл` and one or more `VISA файл(ы)`.
-- Click `Сверить и показать разницу`.
-- App runs upload -> parse/validate -> match -> build report and opens `Результаты`.
-- On `Результаты` tab use filters/status/search and pagination.
-- On `Результаты` tab use exports: full XLSX report, unmatched Way4 CSV, unmatched VISA CSV, mismatches/partial XLSX.
+## Quick Compare API (without UI tab)
+- `POST /api/v1/quick-compare` is kept for API compatibility and scripted integrations.
+- Web UI no longer exposes the old `Загрузка Lite` screen.
 
 API example:
 ```bash

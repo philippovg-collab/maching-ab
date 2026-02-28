@@ -523,8 +523,14 @@ pre {
   padding-bottom: 16px;
 }
 
+.ingestion-content {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
 .drop-zone {
-  margin: 12px;
+  margin: 0;
   border: 2px dashed #b6d3c2;
   border-radius: 12px;
   background: #f3f9f6;
@@ -532,28 +538,6 @@ pre {
   text-align: center;
   color: #486153;
   transition: 0.2s ease;
-}
-
-.drop-zone.small {
-  margin: 0 0 10px;
-}
-
-.lite-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 12px;
-}
-
-.lite-card {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px;
-  background: #f8faf8;
-}
-
-.lite-card h3 {
-  margin: 0 0 10px;
 }
 
 .lite-actions {
@@ -583,9 +567,20 @@ pre {
 }
 
 .upload-progress {
-  margin: 0 12px 12px;
+  margin: 0;
   display: grid;
   gap: 8px;
+}
+
+#viewIngestion .ingestion-grid {
+  grid-template-columns: 1fr 1fr auto;
+  padding: 0;
+}
+
+#viewIngestion .ingestion-content h3,
+#viewIngestion .ingestion-content .muted {
+  margin: 0;
+  padding: 0;
 }
 
 .upload-item {
@@ -665,10 +660,6 @@ pre {
   }
 
   .ingestion-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .lite-grid {
     grid-template-columns: 1fr;
   }
 

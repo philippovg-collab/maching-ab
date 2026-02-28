@@ -36,7 +36,8 @@ class OnboardingSmokeTest(unittest.TestCase):
 
         html = Path("src/web/index.html").read_text(encoding="utf-8")
         self.assertIn("Начните сверку за 1 минуту", html)
-        self.assertIn('id="startOnboardingBtn"', html)
+        self.assertIn('id="xlsxUploadRunBtn"', html)
+        self.assertNotIn('id="viewLite"', html)
 
         balance0 = self.service.source_balance("admin", business_date)
         self.assertFalse(balance0["ready_for_matching"])
@@ -94,4 +95,3 @@ class OnboardingSmokeTest(unittest.TestCase):
         self.assertEqual(latest["run"]["run_id"], run["run_id"])
         self.assertIn("summary", latest)
         self.assertIn("items", latest)
-

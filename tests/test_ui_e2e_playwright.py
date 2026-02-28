@@ -57,28 +57,28 @@ class UiE2EPlaywrightTest(unittest.TestCase):
     def _is_hidden(self, page, selector: str) -> bool:
         return bool(page.eval_on_selector(selector, "el => el.classList.contains('hidden')"))
 
-    def test_ui_onboarding_branch_and_open_results(self):
+    def test_ui_navigation_and_open_results(self):
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
             page.goto(self.base_url, wait_until="networkidle")
 
-            # Scenario A: first-time user branch with empty business_date.
+            # Scenario A: app opens on ingestion view and legacy tabs are removed.
             page.fill("#businessDate", "2026-03-10")
             page.dispatch_event("#businessDate", "change")
             page.wait_for_timeout(350)
-            self.assertFalse(self._is_hidden(page, "#firstRunCta"))
+            self.assertFalse(self._is_hidden(page, "#viewIngestion"))
+            self.assertTrue(self._is_hidden(page, "#viewResults"))
+            self.assertEqual(page.locator("#tabDashboard").count(), 0)
+            self.assertEqual(page.locator("#tabLite").count(), 0)
+            self.assertEqual(page.locator("#viewLite").count(), 0)
+            self.assertEqual(page.locator("#quickCompareBtn").count(), 0)
 
-            page.click("#startOnboardingBtn")
-            page.wait_for_timeout(150)
-            self.assertFalse(self._is_hidden(page, "#viewLite"))
-            self.assertTrue(page.is_disabled("#quickCompareBtn"))
-
-            # Scenario B: open results for seeded run.
+            # Scenario B: open results for seeded run via the Results tab.
             page.fill("#businessDate", self.seed_date)
             page.dispatch_event("#businessDate", "change")
             page.wait_for_timeout(400)
-            page.click("#openLastResultsBtn")
+            page.click("#tabResults")
             page.wait_for_timeout(350)
             self.assertFalse(self._is_hidden(page, "#viewResults"))
             run_id_text = page.locator("#resRunId").inner_text().strip()
@@ -86,4 +86,3 @@ class UiE2EPlaywrightTest(unittest.TestCase):
             self.assertIn("...", run_id_text)
 
             browser.close()
-

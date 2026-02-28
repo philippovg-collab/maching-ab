@@ -1,13 +1,11 @@
 const state = {
-  view: "dashboard",
+  view: "ingestion",
   selectedCaseId: null,
   users: [],
   readyForMatching: true,
   selectedFiles: [],
   progressMap: {},
   quick: {
-    way4: null,
-    visa: [],
     runId: null,
     businessDate: null,
     resultsPage: 1,
@@ -15,16 +13,14 @@ const state = {
   },
 };
 
+const DEFAULT_ACTOR = "admin";
+
 const el = {
-  user: document.getElementById("userSelect"),
   date: document.getElementById("businessDate"),
   refresh: document.getElementById("refreshBtn"),
   run: document.getElementById("runBtn"),
   runBtnHint: document.getElementById("runBtnHint"),
   exportUnmatchedBtn: document.getElementById("exportUnmatchedBtn"),
-  goLiteBtn: document.getElementById("goLiteBtn"),
-  startOnboardingBtn: document.getElementById("startOnboardingBtn"),
-  openLiteGuideBtn: document.getElementById("openLiteGuideBtn"),
   openLastResultsBtn: document.getElementById("openLastResultsBtn"),
   downloadLastReportBtn: document.getElementById("downloadLastReportBtn"),
   lastRunBadge: document.getElementById("lastRunBadge"),
@@ -35,13 +31,9 @@ const el = {
   lastRunUnmatched: document.getElementById("lastRunUnmatched"),
   lastRunPartial: document.getElementById("lastRunPartial"),
 
-  tabDashboard: document.getElementById("tabDashboard"),
   tabIngestion: document.getElementById("tabIngestion"),
-  tabLite: document.getElementById("tabLite"),
   tabResults: document.getElementById("tabResults"),
-  viewDashboard: document.getElementById("viewDashboard"),
   viewIngestion: document.getElementById("viewIngestion"),
-  viewLite: document.getElementById("viewLite"),
   viewResults: document.getElementById("viewResults"),
 
   statusFilter: document.getElementById("statusFilter"),
@@ -90,21 +82,10 @@ const el = {
 
   xlsxProfile: document.getElementById("xlsxProfile"),
   xlsxFiles: document.getElementById("xlsxFiles"),
-  xlsxUploadBtn: document.getElementById("xlsxUploadBtn"),
   xlsxUploadRunBtn: document.getElementById("xlsxUploadRunBtn"),
   xlsxResult: document.getElementById("xlsxResult"),
   dropZone: document.getElementById("dropZone"),
   uploadProgress: document.getElementById("uploadProgress"),
-
-  liteWay4File: document.getElementById("liteWay4File"),
-  liteVisaFiles: document.getElementById("liteVisaFiles"),
-  dropWay4: document.getElementById("dropWay4"),
-  dropVisa: document.getElementById("dropVisa"),
-  liteWay4Name: document.getElementById("liteWay4Name"),
-  liteVisaNames: document.getElementById("liteVisaNames"),
-  quickCompareBtn: document.getElementById("quickCompareBtn"),
-  quickProgress: document.getElementById("quickProgress"),
-  quickErrors: document.getElementById("quickErrors"),
 
   resRunId: document.getElementById("resRunId"),
   resDate: document.getElementById("resDate"),
@@ -226,7 +207,7 @@ async function api(path, options = {}) {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      "X-User": el.user.value,
+      "X-User": DEFAULT_ACTOR,
       ...(options.headers || {}),
     },
   });
@@ -251,7 +232,7 @@ async function safeApi(path, fallbackValue, options = {}) {
 }
 
 async function downloadFile(path, filenameFallback) {
-  const res = await fetch(path, { method: "GET", headers: { "X-User": el.user.value } });
+  const res = await fetch(path, { method: "GET", headers: { "X-User": DEFAULT_ACTOR } });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
@@ -274,18 +255,15 @@ async function downloadFile(path, filenameFallback) {
 }
 
 function setView(view) {
-  state.view = view;
+  const normalized = view === "results" ? "results" : "ingestion";
+  state.view = normalized;
   const map = {
-    dashboard: el.viewDashboard,
     ingestion: el.viewIngestion,
-    lite: el.viewLite,
     results: el.viewResults,
   };
-  Object.entries(map).forEach(([k, node]) => node.classList.toggle("hidden", k !== view));
-  el.tabDashboard.classList.toggle("active", view === "dashboard");
-  el.tabIngestion.classList.toggle("active", view === "ingestion");
-  el.tabLite.classList.toggle("active", view === "lite");
-  el.tabResults.classList.toggle("active", view === "results");
+  Object.entries(map).forEach(([k, node]) => node.classList.toggle("hidden", k !== normalized));
+  el.tabIngestion.classList.toggle("active", normalized === "ingestion");
+  el.tabResults.classList.toggle("active", normalized === "results");
 }
 
 function renderUploadProgress(target, progressMap, emptyMsg = "Нет активных загрузок") {
@@ -506,7 +484,7 @@ async function loadDashboard() {
   try {
     users = await api(`/api/v1/meta/users`);
   } catch (_) {
-    users = { items: [{ login: el.user.value, roles: [] }] };
+    users = { items: [{ login: DEFAULT_ACTOR, roles: [] }] };
   }
   fillSourceBalance(balance);
   fillKPIs(kpi);
@@ -530,8 +508,8 @@ async function loadDashboard() {
 
 async function runMatching() {
   if (!state.readyForMatching) {
-    showToast("Сначала загрузите Way4 и VISA файлы. Перенаправляю в Загрузка Lite", true);
-    setView("lite");
+    showToast("Сначала загрузите Way4 и VISA файлы. Перенаправляю в Загрузка", true);
+    setView("ingestion");
     return;
   }
   try {
@@ -640,7 +618,6 @@ async function uploadXlsx() {
   try {
     state.progressMap = {};
     renderUploadProgress(el.uploadProgress, state.progressMap);
-    el.xlsxUploadBtn.disabled = true;
     el.xlsxUploadRunBtn.disabled = true;
     const items = [];
     for (const file of files) {
@@ -702,7 +679,6 @@ async function uploadXlsx() {
     showToast(e.message, true);
     return { ok: false, error: e };
   } finally {
-    el.xlsxUploadBtn.disabled = false;
     el.xlsxUploadRunBtn.disabled = false;
   }
 }
@@ -725,34 +701,6 @@ function wireDropZone(node, onFiles) {
   ["dragenter", "dragover"].forEach((evt) => node.addEventListener(evt, () => node.classList.add("dragover")));
   ["dragleave", "drop"].forEach((evt) => node.addEventListener(evt, () => node.classList.remove("dragover")));
   node.addEventListener("drop", (ev) => onFiles(Array.from(ev.dataTransfer.files || [])));
-}
-
-function renderQuickFileLabels() {
-  el.liteWay4Name.textContent = state.quick.way4 ? state.quick.way4.name : "Файл не выбран";
-  el.liteVisaNames.textContent = state.quick.visa.length
-    ? state.quick.visa.map((f) => f.name).join(", ")
-    : "Файлы не выбраны";
-  el.quickCompareBtn.disabled = !(state.quick.way4 && state.quick.visa.length);
-}
-
-function setQuickProgress(step, status, percent) {
-  const map = state.quickProgressMap || (state.quickProgressMap = {});
-  map[step] = { name: step, state: status, percent };
-  renderUploadProgress(el.quickProgress, map, "Шаги не запускались");
-}
-
-function clearQuickProgress() {
-  state.quickProgressMap = {};
-  renderUploadProgress(el.quickProgress, state.quickProgressMap, "Шаги не запускались");
-}
-
-function renderQuickValidationErrors(payload) {
-  if (!payload || !Array.isArray(payload.errors) || !payload.errors.length) {
-    el.quickErrors.textContent = "Нет ошибок";
-    return;
-  }
-  const lines = payload.errors.slice(0, 200).map((e) => `${e.file}: строка ${e.row}, поле ${e.field} - ${e.message}`);
-  el.quickErrors.textContent = lines.join("\n");
 }
 
 function buildResultsFiltersQuery() {
@@ -862,47 +810,6 @@ async function loadResults(runId, businessDate) {
   }
 }
 
-async function quickCompare() {
-  if (!state.quick.way4 || !state.quick.visa.length) return;
-  try {
-    el.quickCompareBtn.disabled = true;
-    clearQuickProgress();
-    el.quickErrors.textContent = "Нет ошибок";
-
-    setQuickProgress("upload", "Подготовка файлов", 15);
-    const way4b64 = await toBase64(state.quick.way4);
-    const visaB64 = [];
-    for (const f of state.quick.visa) visaB64.push({ file_name: f.name, file_base64: await toBase64(f) });
-
-    setQuickProgress("parse_validate", "Парсинг и валидация", 45);
-    const payload = {
-      business_date: el.date.value,
-      way4_file: { file_name: state.quick.way4.name, file_base64: way4b64 },
-      visa_files: visaB64,
-    };
-
-    setQuickProgress("match", "Запуск матчинга", 75);
-    const res = await api(`/api/v1/quick-compare`, { method: "POST", body: JSON.stringify(payload) });
-
-    setQuickProgress("build_report", "Формирование отчета", 95);
-    state.quick.runId = res.run_id;
-    state.quick.businessDate = res.business_date;
-    await loadResults(res.run_id, res.business_date);
-    setQuickProgress("done", "Завершено", 100);
-    setView("results");
-    showToast("Быстрая сверка завершена");
-    await loadDashboard();
-  } catch (e) {
-    try {
-      renderQuickValidationErrors(e.payload);
-    } catch (_) {}
-    setQuickProgress("error", "Ошибка", 100);
-    showToast(e.message, true);
-  } finally {
-    renderQuickFileLabels();
-  }
-}
-
 async function ensureResultsRun() {
   if (state.quick.runId) return state.quick.runId;
   const q = new URLSearchParams({ business_date: el.date.value, page: "1", page_size: "1" });
@@ -937,11 +844,8 @@ function bindEvents() {
     state.quick.resultsPage = 1;
     loadDashboard().catch((e) => showToast(e.message, true));
   });
-  el.user.addEventListener("change", () => loadDashboard().catch((e) => showToast(e.message, true)));
 
-  el.tabDashboard.addEventListener("click", () => setView("dashboard"));
   el.tabIngestion.addEventListener("click", () => setView("ingestion"));
-  el.tabLite.addEventListener("click", () => setView("lite"));
   el.tabResults.addEventListener("click", async () => {
     setView("results");
     const runId = await ensureResultsRun();
@@ -951,9 +855,6 @@ function bindEvents() {
     }
     await loadResults(runId, state.quick.businessDate || el.date.value);
   });
-  el.goLiteBtn.addEventListener("click", () => setView("lite"));
-  el.startOnboardingBtn.addEventListener("click", () => setView("lite"));
-  el.openLiteGuideBtn.addEventListener("click", () => setView("lite"));
   el.openLastResultsBtn.addEventListener("click", async () => {
     const runId = await ensureResultsRun();
     if (!runId) {
@@ -965,7 +866,6 @@ function bindEvents() {
   });
   el.downloadLastReportBtn.addEventListener("click", () => exportRunReport("report"));
 
-  el.xlsxUploadBtn.addEventListener("click", () => uploadXlsx());
   el.xlsxUploadRunBtn.addEventListener("click", () => uploadXlsxAndRun());
   el.xlsxFiles.addEventListener("change", () => {
     state.selectedFiles = Array.from(el.xlsxFiles.files || []).filter((f) => /\.xlsx$/i.test(f.name));
@@ -983,15 +883,6 @@ function bindEvents() {
     btn.addEventListener("click", () => act({ action_type: "status_change", status: btn.dataset.status }));
   }
 
-  el.liteWay4File.addEventListener("change", () => {
-    state.quick.way4 = (el.liteWay4File.files && el.liteWay4File.files[0]) || null;
-    renderQuickFileLabels();
-  });
-  el.liteVisaFiles.addEventListener("change", () => {
-    state.quick.visa = Array.from(el.liteVisaFiles.files || []);
-    renderQuickFileLabels();
-  });
-  el.quickCompareBtn.addEventListener("click", () => quickCompare());
   el.resExportReportBtn.addEventListener("click", () => exportRunReport("report"));
   el.resExportWay4Btn.addEventListener("click", () => exportRunReport("way4"));
   el.resExportVisaBtn.addEventListener("click", () => exportRunReport("visa"));
@@ -1020,21 +911,11 @@ function bindEvents() {
   wireDropZone(el.dropZone, (files) => {
     state.selectedFiles = files.filter((f) => /\.xlsx$/i.test(f.name));
   });
-  wireDropZone(el.dropWay4, (files) => {
-    state.quick.way4 = files.find((f) => /\.xlsx$/i.test(f.name)) || null;
-    renderQuickFileLabels();
-  });
-  wireDropZone(el.dropVisa, (files) => {
-    state.quick.visa = files.filter((f) => /\.xlsx$/i.test(f.name));
-    renderQuickFileLabels();
-  });
 }
 
 async function init() {
-  setView("dashboard");
+  setView("ingestion");
   renderUploadProgress(el.uploadProgress, state.progressMap);
-  clearQuickProgress();
-  renderQuickFileLabels();
   bindEvents();
   await loadDashboard();
 }

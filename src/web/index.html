@@ -16,16 +16,6 @@
         </div>
         <div class="top-controls">
           <label>
-            Пользователь
-            <select id="userSelect">
-              <option value="admin">admin</option>
-              <option value="operator1">operator1</option>
-              <option value="supervisor">supervisor</option>
-              <option value="auditor">auditor</option>
-              <option value="finance">finance</option>
-            </select>
-          </label>
-          <label>
             Бизнес-дата
             <input id="businessDate" type="date" value="2026-02-22" />
           </label>
@@ -37,21 +27,15 @@
       </header>
 
       <nav class="tabs">
-        <button id="tabDashboard" class="tab-btn active">Дашборд</button>
-        <button id="tabIngestion" class="tab-btn">Загрузка</button>
-        <button id="tabLite" class="tab-btn">Загрузка Lite</button>
+        <button id="tabIngestion" class="tab-btn active">Загрузка</button>
         <button id="tabResults" class="tab-btn">Результаты</button>
       </nav>
 
-      <section id="viewDashboard">
+      <section id="viewDashboard" class="hidden">
         <section id="firstRunCta" class="panel first-run-cta hidden">
           <div class="panel-head"><h2>Начните сверку за 1 минуту</h2></div>
           <div class="first-run-inner">
-            <p>Загрузите 1 файл Way4 и 1+ файлов VISA, затем нажмите "Сверить и показать разницу".</p>
-            <div class="first-run-actions">
-              <button id="startOnboardingBtn" class="btn primary">Загрузить файлы и начать сверку</button>
-              <button id="openLiteGuideBtn" class="btn">Открыть Загрузка Lite</button>
-            </div>
+            <p>Перейдите в раздел «Загрузка», добавьте файлы и запустите матчинг.</p>
           </div>
         </section>
 
@@ -68,8 +52,8 @@
             <div class="quick-step">
               <span>2</span>
               <div>
-                <strong>Нажмите "Сверить и показать разницу"</strong>
-                <small>Система сама распарсит и запустит матчинг</small>
+                <strong>Нажмите "Загрузить и запустить матчинг"</strong>
+                <small>Система распарсит файлы и запустит матчинг</small>
               </div>
             </div>
             <div class="quick-step">
@@ -79,7 +63,6 @@
                 <small>Фильтруйте несопоставленные и скачайте отчеты</small>
               </div>
             </div>
-            <button id="goLiteBtn" class="btn primary">Перейти к загрузке Lite</button>
           </div>
         </section>
 
@@ -286,71 +269,39 @@
         </section>
       </section>
 
-      <section id="viewIngestion" class="hidden">
+      <section id="viewIngestion">
         <section class="panel ingestion-panel">
           <div class="panel-head">
             <h2>Загрузка XLSX</h2>
           </div>
-          <div id="dropZone" class="drop-zone">
-            <p>Перетащите сюда файлы .xlsx</p>
-            <small>или выберите их ниже</small>
-          </div>
-          <div class="ingestion-grid">
-            <label>
-              Профиль источника
-              <select id="xlsxProfile">
-                <option value="">АВТООПРЕДЕЛЕНИЕ (рекомендуется)</option>
-                <option value="WAY4_1552_V1">WAY4_1552_V1 (Копия 1552.xlsx)</option>
-                <option value="VISA_MSPK_V1">VISA_MSPK_V1 (Копия Виза МСПК.xlsx)</option>
-              </select>
-            </label>
-            <label>
-              Файлы XLSX
-              <input id="xlsxFiles" type="file" accept=".xlsx" multiple />
-            </label>
-            <button id="xlsxUploadBtn" class="btn primary">Загрузить файлы</button>
-            <button id="xlsxUploadRunBtn" class="btn">Загрузить и запустить матчинг</button>
-          </div>
-          <h3>Прогресс загрузки</h3>
-          <div id="uploadProgress" class="upload-progress"></div>
-          <div class="muted">
-            Поддерживает пакетную загрузку нескольких Excel. Профиль можно определить автоматически.
-          </div>
-          <h3>Результат загрузки</h3>
-          <pre id="xlsxResult"></pre>
-        </section>
-      </section>
-
-      <section id="viewLite" class="hidden">
-        <section class="panel ingestion-panel">
-          <div class="panel-head"><h2>Быстрая сверка</h2></div>
-          <div class="lite-grid">
-            <div class="lite-card">
-              <h3>Way4 файл</h3>
-              <div id="dropWay4" class="drop-zone small">
-                <p>Перетащите Way4 .xlsx</p>
-                <small>или выберите файл</small>
-              </div>
-              <input id="liteWay4File" type="file" accept=".xlsx" />
-              <div id="liteWay4Name" class="muted">Файл не выбран</div>
+          <div class="ingestion-content">
+            <div id="dropZone" class="drop-zone">
+              <p>Перетащите сюда файлы .xlsx</p>
+              <small>или выберите их ниже</small>
             </div>
-            <div class="lite-card">
-              <h3>VISA файл(ы)</h3>
-              <div id="dropVisa" class="drop-zone small">
-                <p>Перетащите VISA .xlsx</p>
-                <small>можно несколько файлов</small>
-              </div>
-              <input id="liteVisaFiles" type="file" accept=".xlsx" multiple />
-              <div id="liteVisaNames" class="muted">Файлы не выбраны</div>
+            <div class="ingestion-grid">
+              <label>
+                Профиль источника
+                <select id="xlsxProfile">
+                  <option value="">АВТООПРЕДЕЛЕНИЕ (рекомендуется)</option>
+                  <option value="WAY4_1552_V1">WAY4_1552_V1 (Копия 1552.xlsx)</option>
+                  <option value="VISA_MSPK_V1">VISA_MSPK_V1 (Копия Виза МСПК.xlsx)</option>
+                </select>
+              </label>
+              <label>
+                Файлы XLSX
+                <input id="xlsxFiles" type="file" accept=".xlsx" multiple />
+              </label>
+              <button id="xlsxUploadRunBtn" class="btn primary">Загрузить и запустить матчинг</button>
             </div>
+            <h3>Прогресс загрузки</h3>
+            <div id="uploadProgress" class="upload-progress"></div>
+            <div class="muted">
+              Поддерживает пакетную загрузку нескольких Excel. Профиль можно определить автоматически.
+            </div>
+            <h3>Результат загрузки</h3>
+            <pre id="xlsxResult"></pre>
           </div>
-          <div class="lite-actions">
-            <button id="quickCompareBtn" class="btn primary" disabled>Сверить и показать разницу</button>
-          </div>
-          <h3>Прогресс быстрой сверки</h3>
-          <div id="quickProgress" class="upload-progress"></div>
-          <h3>Ошибки валидации</h3>
-          <pre id="quickErrors">Нет ошибок</pre>
         </section>
       </section>
 

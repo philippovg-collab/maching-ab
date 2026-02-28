@@ -92,11 +92,10 @@ class ApiHandler(BaseHTTPRequestHandler):
 
     def _dispatch(self, method: str):
         try:
-            if self.path.startswith("/health"):
-                return self._json_response(HTTPStatus.OK, {"status": "ok"})
-
             parsed = urlparse(self.path)
             path = parsed.path
+            if method == "GET" and path == "/health":
+                return self._json_response(HTTPStatus.OK, {"status": "ok"})
             query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
             actor = self._actor()
             source_ip = self._source_ip()
