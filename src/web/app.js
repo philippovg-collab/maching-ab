@@ -635,7 +635,7 @@ async function uploadXlsx() {
   const files = state.selectedFiles.length ? state.selectedFiles : Array.from(el.xlsxFiles.files || []);
   if (!files.length) {
     showToast("Выберите хотя бы один файл xlsx", true);
-    return;
+    return { ok: false, error: "no_files" };
   }
   try {
     state.progressMap = {};
@@ -686,11 +686,21 @@ async function uploadXlsx() {
       );
     }
     el.xlsxResult.textContent = pretty(result);
-    showToast(`Загружено файлов: ${result.total_files}, записей: ${result.imported_records}`);
+    const hasFailures = Number(result.failed_files || 0) > 0;
+    if (hasFailures) {
+      showToast(
+        `Загрузка завершена с ошибками: ${result.failed_files} из ${result.total_files} файлов не импортированы`,
+        true
+      );
+    } else {
+      showToast(`Загружено файлов: ${result.total_files}, записей: ${result.imported_records}`);
+    }
     await loadDashboard();
+    return { ok: !hasFailures, result };
   } catch (e) {
     el.xlsxResult.textContent = String(e.message || e);
     showToast(e.message, true);
+    return { ok: false, error: e };
   } finally {
     el.xlsxUploadBtn.disabled = false;
     el.xlsxUploadRunBtn.disabled = false;
@@ -698,7 +708,11 @@ async function uploadXlsx() {
 }
 
 async function uploadXlsxAndRun() {
-  await uploadXlsx();
+  const uploadResult = await uploadXlsx();
+  if (!uploadResult || !uploadResult.ok) {
+    showToast("Матчинг не запущен: сначала исправьте ошибки загрузки", true);
+    return;
+  }
   await runMatching();
 }
 

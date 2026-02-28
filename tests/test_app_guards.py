@@ -56,6 +56,39 @@ class AppGuardsTest(unittest.TestCase):
         self.assertEqual(row["pan_masked"], "400012******1234")
         self.assertNotEqual(row["pan_masked"], "4000123412341234")
 
+    def test_pan_is_sanitized_when_embedded_in_noisy_string(self):
+        business_date = "2026-02-22"
+        self.service.ingest_file(
+            "admin",
+            "127.0.0.1",
+            {
+                "source": "WAY4_EXPORT",
+                "business_date": business_date,
+                "file_name": "way4-noisy-pan.json",
+                "checksum_sha256": "c1-noisy",
+                "parser_profile": "WAY4_v1",
+                "records": [
+                    {
+                        "rrn": "124",
+                        "arn": "A124",
+                        "pan_masked": "CARD:40001234-1234-1234",
+                        "amount": 101.0,
+                        "currency": "KZT",
+                        "txn_time": f"{business_date}T01:05:00+06:00",
+                        "op_type": "PURCHASE",
+                        "merchant_id": "M1",
+                        "channel_id": "ECOM",
+                        "status_norm": "BOOKED",
+                    }
+                ],
+            },
+        )
+        with self.db.connect() as conn:
+            row = conn.execute("SELECT pan_masked FROM txns WHERE rrn='124'").fetchone()
+        self.assertIsNotNone(row)
+        self.assertEqual(row["pan_masked"], "400012******1234")
+        self.assertNotIn("4000123412341234", row["pan_masked"])
+
     def test_matching_requires_both_sources(self):
         business_date = "2026-02-23"
         self.service.ingest_file(

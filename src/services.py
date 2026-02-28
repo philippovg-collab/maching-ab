@@ -59,6 +59,14 @@ def sanitize_pan_masked(value: Any) -> str:
     if re.fullmatch(r"[0-9Xx\*]{12,19}", compact):
         return compact.replace("X", "*").replace("x", "*")
 
+    # Defensive fallback: if PAN is embedded into a noisy string, still mask it.
+    embedded = re.search(r"(?<!\d)(?:\d[\s\-]*){12,19}(?!\d)", raw)
+    if embedded:
+        digits = re.sub(r"\D", "", embedded.group(0))
+        if 12 <= len(digits) <= 19:
+            stars = "*" * max(2, len(digits) - 10)
+            return f"{digits[:6]}{stars}{digits[-4:]}"
+
     return raw
 
 
